@@ -3,13 +3,22 @@ import mongoose from 'mongoose';
 import session from 'express-session';
 import cookieParser from 'cookie-parser';
 import errorHandler from './middlewares/errorHandler.js';
-import { login, signUp } from './controllers/user.js'
+import { getLogin, login, logout, signUp } from './controllers/user.js'
 import auth from './middlewares/auth.js'
 import MongoStore from 'connect-mongo'
+import csurf from 'csurf';
+import dotenv from "dotenv"
+dotenv.config()
+const PORT = process.env.PORT || 4000
 const app = express();
 
+const csrfProtection = csurf({
+    cookie: true
+})
+
+// Connection Of Database
 try {
-    await mongoose.connect("mongodb://localhost:27017/session-user")
+    await mongoose.connect(process.env.DB_URL)
     console.log("Connected to Database");
 } catch (error) {
     console.log("Database Connection Error");
@@ -17,14 +26,15 @@ try {
 
 app.use(express.json())
 
+//Cookie parser to get cookie from request object
 app.use(cookieParser())
 
-app.post("/signup", signUp)
+app.post("/signup",signUp)
 
 // This setup is for session
 app.use(session({
     // This is Secret to generate Token
-    secret: 'Simform_Secret',
+    secret: process.env.SESSION_SECRET,
     // This is false because i only want to save the modified session
     saveUninitialized: false,
     // This will resave the session.cookie value every time
@@ -37,21 +47,16 @@ app.use(session({
         autoRemoveInterval: 10
     })
 }))
-app.get("/logout", auth, (req, res) => {
+app.post("/logout", auth, csrfProtection, logout)
 
-    req.session.destroy()
-    res.json({
-        message: "logout successfull"
-    })
-})
 app.get("/private", auth, (req, res) => {
     res.send(`Hello ${req.session.user.username}! You are Accessing Protected end-point`)
 })
-app.post("/login", login)
+app.get("/login", csrfProtection, getLogin)
+app.post("/login", csrfProtection,login)
 
-
-
+//This is error handling middleware
 app.use(errorHandler)
-app.listen(3000, () => {
-    console.log("server is running");
+app.listen(PORT, () => {
+    console.log(`server is running on port ${PORT}`);
 })

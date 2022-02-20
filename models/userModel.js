@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 import bcrypt from 'bcrypt';
 import validator from "validator";
-import MyError from "../myError.js";
 
 const userSchema = mongoose.Schema({
     username : {
@@ -24,11 +23,13 @@ const userSchema = mongoose.Schema({
     }
 })
 
+//This is Instance method for comparing hashed password
 userSchema.methods.checkPassword = async function(password){
     let isMathed = await bcrypt.compare(password, this.password)
     return isMathed
 }
 
+//This function will execute before user saved
 userSchema.pre("save", async function(next){
     let hashedPasword = await bcrypt.hash(this.password,10)
     this.password = hashedPasword
